@@ -54,6 +54,25 @@ func (es ESConf) EHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(strings.Join(messages, "\n")))
 }
 
+// MHandler /m/ schema
+func (es ESConf) MHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	msgid := vars["msgid"]
+
+	LogRequest(r)
+
+	ch := make(chan []byte)
+	// Get echolist
+	go func() {
+		ch <- es.GetPlainTextMessage(msgid)
+	}()
+
+	message := <-ch
+
+	w.WriteHeader(200)
+	w.Write(message)
+}
+
 // Serve ...
 func Serve(listen string, es ESConf) {
 	r := mux.NewRouter()
@@ -62,6 +81,7 @@ func Serve(listen string, es ESConf) {
 
 	// Standart schemas
 	r.HandleFunc("/e/{echo}", es.EHandler)
+	r.HandleFunc("/m/{msgid}", es.MHandler)
 
 	http.Handle("/", r)
 

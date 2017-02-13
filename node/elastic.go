@@ -25,6 +25,50 @@ type Bucket struct {
 	DocCount int    `json:"doc_count"`
 }
 
+// MakePlainTextMessage ...
+func MakePlainTextMessage(hit interface{}) string {
+
+	h := make(map[string]interface{})
+	h = hit.(map[string]interface{})
+	s := make(map[string]interface{})
+	s = h["_source"].(map[string]interface{})
+
+	log.Print(s)
+
+	m := []string{"ii/ok", s["echo"].(string), s["date"].(string), s["author"].(string), "null", s["to"].(string), s["subg"].(string), "", s["message"].(string)}
+
+	return strings.Join(m, "\n")
+}
+
+// GetPlainTextMessage ...
+func (es ESConf) GetPlainTextMessage(msgid string) []byte {
+	var message []byte
+
+	searchURI := strings.Join([]string{es.Host, es.Index, es.Type, "_search"}, "/")
+	searchQ := []byte(strings.Join([]string{
+		`{"query": {"match": {"_id": "`, msgid, `"}}}`}, ""))
+
+	req, err := http.NewRequest("POST", searchURI, bytes.NewBuffer(searchQ))
+	client := &http.Client{}
+	resp, err := client.Do(req)
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return message
+	}
+
+	esresp, err := gabs.ParseJSON(body)
+	if err != nil {
+		panic(err)
+	}
+
+	hits, _ := esresp.Path("hits.hits").Data().([]interface{})
+
+	return []byte(MakePlainTextMessage(hits[0]))
+}
+
 // GetEchoMessageHashes ...
 func (es ESConf) GetEchoMessageHashes(echo string) []string {
 	var hashes []string
