@@ -25,6 +25,44 @@ type Bucket struct {
 	DocCount int    `json:"doc_count"`
 }
 
+// GetEchoMessageHashes ...
+func (es ESConf) GetEchoMessageHashes(echo string) []string {
+	var hashes []string
+
+	searchURI := strings.Join([]string{es.Host, es.Index, es.Type, "_search"}, "/")
+	searchQ := []byte(strings.Join([]string{
+		`{"sort": [
+            {"date":{ "order": "desc" }},{ "_score":{ "order": "desc" }}],
+          "query": {"query_string" : {"fields": ["msgid", "echo"], "query":"`, echo, `"}}, "size": 500}`}, ""))
+
+	req, err := http.NewRequest("POST", searchURI, bytes.NewBuffer(searchQ))
+	client := &http.Client{}
+	resp, err := client.Do(req)
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return hashes
+	}
+
+	esresp, err := gabs.ParseJSON(body)
+	if err != nil {
+		panic(err)
+	}
+
+	hits, _ := esresp.Path("hits.hits").Data().([]interface{})
+	for _, hit := range hits {
+		h := make(map[string]interface{})
+		h = hit.(map[string]interface{})
+		source := make(map[string]interface{})
+		source = h["_source"].(map[string]interface{})
+		hashes = append(hashes, source["msgid"].(string))
+	}
+
+	return hashes
+}
+
 // GetListTXT ...
 func (es ESConf) GetListTXT() []byte {
 	searchURI := strings.Join([]string{es.Host, es.Index, es.Type, "_search"}, "/")
