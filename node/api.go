@@ -10,11 +10,13 @@ import (
 // ListTXTHandler ...
 func (es ESConf) ListTXTHandler(w http.ResponseWriter, r *http.Request) {
 
+	ch := make(chan []byte)
 	// Get echolist
-	echoes, err := es.GetListTXT()
-	if err != nil {
-		w.WriteHeader(500)
-	}
+	go func() {
+		ch <- es.GetListTXT()
+	}()
+
+	echoes := <-ch
 
 	w.WriteHeader(200)
 	w.Write(echoes)

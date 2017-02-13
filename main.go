@@ -15,7 +15,7 @@ var (
 // init ...
 func init() {
 	flag.StringVar(&listen, "listen", "127.0.0.1:15582", "Address to listen")
-	flag.StringVar(&es, "es", "htt://127.0.0.1:9200", "ES host")
+	flag.StringVar(&es, "es", "http://127.0.0.1:9200", "ES host")
 	flag.StringVar(&esMessagesIndex, "esindex", "idec3", "ES index")
 	flag.StringVar(&esMessagesType, "estype", "post", "ES index type")
 	flag.Parse()
