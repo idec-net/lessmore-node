@@ -92,5 +92,6 @@ func Serve(listen string, es ESConf) {
 		ReadTimeout:  15 * time.Second,
 	}
 
+	log.Print("Listening IDEC API on ", listen)
 	log.Fatal(srv.ListenAndServe())
 }
