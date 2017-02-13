@@ -13,12 +13,13 @@ RUN apk update && apk add git go
 
 ENV GOPATH /usr
 
-# Get sources
-RUN cd / && git clone https://gitea.difrex.ru/Umbrella/lessmore.git
-
 # Get go depends
-RUN cd /lessmore && go get -t -v ./... || true
-RUN cd /lessmore && go get gitea.difrex.ru/Umbrella/fetcher
-RUN cd /lessmore && go get gitea.difrex.ru/Umbrella/lessmore
+RUN go get gitea.difrex.ru/Umbrella/fetcher
+RUN go get gitea.difrex.ru/Umbrella/lessmore
+RUN go install gitea.difrex.ru/Umbrella/lessmore
 
-ENTRYPOINT cd /lessmore && go build && mv lessmore /out/
+# Check build result
+RUN echo -ne "Check build result\n==============="
+RUN /usr/bin/lessmore --help || [[ $? -eq 2 ]]
+
+ENTRYPOINT mv /usr/bin/lessmore /out/
