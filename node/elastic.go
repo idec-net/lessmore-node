@@ -33,8 +33,6 @@ func MakePlainTextMessage(hit interface{}) string {
 	s := make(map[string]interface{})
 	s = h["_source"].(map[string]interface{})
 
-	log.Print(s)
-
 	m := []string{"ii/ok", s["echo"].(string), s["date"].(string), s["author"].(string), "null", s["to"].(string), s["subg"].(string), "", s["message"].(string)}
 
 	return strings.Join(m, "\n")
