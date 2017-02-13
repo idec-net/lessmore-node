@@ -1,0 +1,25 @@
+{
+    "mappings" : {
+        "post" : {
+            "properties" : {
+                "date" : {
+                    "type" : "keyword",
+	                "fields": {
+		                "keyword": {
+	    		            "type": "keyword"
+		                }
+		            }
+                },
+                "echo" : {
+                    "type" : "keyword",
+	                "fields": {
+		                "keyword": {
+	    		            "type": "keyword"
+		                }
+		            }
+                }
+	        }
+        }
+    }
+}
+
