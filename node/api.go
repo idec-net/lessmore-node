@@ -27,7 +27,7 @@ func (es ESConf) ListTXTHandler(w http.ResponseWriter, r *http.Request) {
 
 // XFeaturesHandler list supported features
 func XFeaturesHandler(w http.ResponseWriter, r *http.Request) {
-	features := []string{"list.txt", "x/features"}
+	features := []string{"list.txt", "u/e"}
 
 	LogRequest(r)
 
@@ -46,6 +46,27 @@ func (es ESConf) EHandler(w http.ResponseWriter, r *http.Request) {
 	// Get echolist
 	go func() {
 		ch <- es.GetEchoMessageHashes(echo)
+	}()
+
+	messages := <-ch
+
+	w.WriteHeader(200)
+	w.Write([]byte(strings.Join(messages, "\n")))
+}
+
+// UEHandler /u/e/ schema
+func (es ESConf) UEHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	e := vars["echoes"]
+
+	log.Print("/u/e/ vars: ", e)
+
+	LogRequest(r)
+
+	ch := make(chan []string)
+	// Get echolist
+	go func() {
+		ch <- es.GetUEchoMessageHashes(e)
 	}()
 
 	messages := <-ch
@@ -82,6 +103,9 @@ func Serve(listen string, es ESConf) {
 	// Standart schemas
 	r.HandleFunc("/e/{echo}", es.EHandler)
 	r.HandleFunc("/m/{msgid}", es.MHandler)
+
+	// Extensions
+	r.HandleFunc("/u/e/{echoes:[a-z0-9-_/.:]+}", es.UEHandler)
 
 	http.Handle("/", r)
 
