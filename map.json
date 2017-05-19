@@ -1,25 +1,56 @@
 {
+  "idec3" : {
     "mappings" : {
-        "post" : {
-            "properties" : {
-                "date" : {
-                    "type" : "keyword",
-	                "fields": {
-		                "keyword": {
-	    		            "type": "keyword"
-		                }
-		            }
-                },
-                "echo" : {
-                    "type" : "keyword",
-	                "fields": {
-		                "keyword": {
-	    		            "type": "keyword"
-		                }
-		            }
-                }
-	        }
+      "post" : {
+        "properties" : {
+          "author" : {
+            "type" : "text"
+          },
+          "body" : {
+            "type" : "text",
+            "fields" : {
+              "keyword" : {
+                "type" : "keyword",
+                "ignore_above" : 256
+              }
+            }
+          },
+          "date" : {
+            "type" : "text",
+            "fielddata" : true
+          },
+          "echo" : {
+            "type" : "keyword"
+          },
+          "message" : {
+            "type" : "text"
+          },
+          "msgid" : {
+            "type" : "text"
+          },
+          "subg" : {
+            "type" : "text"
+          },
+          "tags" : {
+            "type" : "text"
+          },
+          "address" : {
+            "type" : "text"
+          },
+          "subj" : {
+            "type" : "text",
+            "fields" : {
+              "keyword" : {
+                "type" : "keyword",
+                "ignore_above" : 256
+              }
+            }
+          },
+          "to" : {
+            "type" : "text"
+          }
         }
+      }
     }
+  }
 }
-
