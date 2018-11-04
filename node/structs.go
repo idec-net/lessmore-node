@@ -16,6 +16,7 @@ type ESSearchResp struct {
 	Took           int64 `json:"took"`
 	TimedOut       bool  `json:"timed_out"`
 	ESSearchShards `json:"_shards"`
+	Hits           `json:"hits"`
 }
 
 type Hits struct {

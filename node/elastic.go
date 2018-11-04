@@ -10,7 +10,7 @@ import (
 
 	"fmt"
 
-	"github.com/Jeffail/gabs"
+	"gitea.difrex.ru/Umbrella/fetcher/i2es"
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -19,23 +19,34 @@ const (
 )
 
 // MakePlainTextMessage ...
-func MakePlainTextMessage(hit interface{}) string {
+func MakePlainTextMessage(hit i2es.ESDoc) []byte {
+	tags := "ii/ok"
+	if hit.Repto != "" {
+		tags += fmt.Sprintf("/repto/%s", hit.Repto)
+	}
+	m := []string{
+		tags,
+		hit.Echo,
+		hit.Date,
+		hit.Author,
+		hit.Address,
+		hit.To,
+		hit.Subg,
+		hit.Message,
+	}
 
-	h := make(map[string]interface{})
-	h = hit.(map[string]interface{})
-	s := make(map[string]interface{})
-	s = h["_source"].(map[string]interface{})
-
-	m := []string{"ii/ok", s["echo"].(string), s["date"].(string), s["author"].(string), "null", s["to"].(string), s["subg"].(string), "", s["message"].(string)}
-
-	return strings.Join(m, "\n")
+	return []byte(strings.Join(m, "\n"))
 }
 
 // GetPlainTextMessage ...
 func (es ESConf) GetPlainTextMessage(msgid string) []byte {
-	var message []byte
+	var searchURI string
+	if es.Index != "" && es.Type != "" {
+		searchURI = strings.Join([]string{es.Host, es.Index, es.Type, "_search"}, "/")
+	} else {
+		searchURI = strings.Join([]string{es.Host, "search"}, "/")
+	}
 
-	searchURI := strings.Join([]string{es.Host, es.Index, es.Type, "_search"}, "/")
 	searchQ := []byte(strings.Join([]string{
 		`{"query": {"match": {"_id": "`, msgid, `"}}}`}, ""))
 
@@ -47,27 +58,30 @@ func (es ESConf) GetPlainTextMessage(msgid string) []byte {
 	}
 
 	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
+	var esr ESSearchResp
+	err = json.NewDecoder(resp.Body).Decode(&esr)
 	if err != nil {
-		return message
+		log.Error(err.Error())
+		return []byte("")
 	}
 
-	esresp, err := gabs.ParseJSON(body)
-	if err != nil {
-		panic(err)
+	if len(esr.Hits.Hits) > 0 {
+		return MakePlainTextMessage(esr.Hits.Hits[0].Source)
 	}
 
-	hits, _ := esresp.Path("hits.hits").Data().([]interface{})
-
-	return []byte(MakePlainTextMessage(hits[0]))
+	return []byte("")
 }
 
 // GetEchoMessageHashes ...
 func (es ESConf) GetEchoMessageHashes(echo string) []string {
 	var hashes []string
+	var searchURI string
+	if es.Index != "" && es.Type != "" {
+		searchURI = strings.Join([]string{es.Host, es.Index, es.Type, "_search"}, "/")
+	} else {
+		searchURI = strings.Join([]string{es.Host, "search"}, "/")
+	}
 
-	searchURI := strings.Join([]string{es.Host, es.Index, es.Type, "_search"}, "/")
 	searchQ := []byte(strings.Join([]string{
 		`{"sort": [
             {"date":{ "order": "desc" }},{ "_score":{ "order": "desc" }}],
@@ -78,27 +92,23 @@ func (es ESConf) GetEchoMessageHashes(echo string) []string {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Error(err.Error())
+		return hashes
 	}
 
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	var esr ESSearchResp
+	err = json.NewDecoder(resp.Body).Decode(&esr)
 	if err != nil {
+		b, _ := ioutil.ReadAll(resp.Body)
+		log.Error(string(b))
+		log.Error(err.Error())
+		hashes = append(hashes, "error: Internal error")
 		return hashes
 	}
 
-	esresp, err := gabs.ParseJSON(body)
-	if err != nil {
-		panic(err)
-	}
-
-	hits, _ := esresp.Path("hits.hits").Data().([]interface{})
-	for _, hit := range hits {
-		h := make(map[string]interface{})
-		h = hit.(map[string]interface{})
-		source := make(map[string]interface{})
-		source = h["_source"].(map[string]interface{})
-		hashes = append(hashes, source["msgid"].(string))
+	for _, hit := range esr.Hits.Hits {
+		hashes = append(hashes, hit.Source.MsgID)
 	}
 
 	return hashes
@@ -107,6 +117,12 @@ func (es ESConf) GetEchoMessageHashes(echo string) []string {
 // GetLimitedEchoMessageHashes ...
 func (es ESConf) GetLimitedEchoMessageHashes(echo string, offset int, limit int) []string {
 	var hashes []string
+	var searchURI string
+	if es.Index != "" && es.Type != "" {
+		searchURI = strings.Join([]string{es.Host, es.Index, es.Type, "_search"}, "/")
+	} else {
+		searchURI = strings.Join([]string{es.Host, "search"}, "/")
+	}
 
 	// Check offset
 	var order string
@@ -118,7 +134,6 @@ func (es ESConf) GetLimitedEchoMessageHashes(echo string, offset int, limit int)
 
 	l := strconv.Itoa(limit)
 
-	searchURI := strings.Join([]string{es.Host, es.Index, es.Type, "_search"}, "/")
 	searchQ := []byte(strings.Join([]string{
 		`{"sort": [
             {"date":{ "order": "`, order, `" }},{ "_score":{ "order": "`, order, `" }}],
@@ -129,27 +144,19 @@ func (es ESConf) GetLimitedEchoMessageHashes(echo string, offset int, limit int)
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Error(err.Error())
+		return hashes
 	}
 
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	var esr ESSearchResp
+	err = json.NewDecoder(resp.Body).Decode(&esr)
 	if err != nil {
+		log.Error(err.Error())
 		return hashes
 	}
-
-	esresp, err := gabs.ParseJSON(body)
-	if err != nil {
-		panic(err)
-	}
-
-	hits, _ := esresp.Path("hits.hits").Data().([]interface{})
-	for _, hit := range hits {
-		h := make(map[string]interface{})
-		h = hit.(map[string]interface{})
-		source := make(map[string]interface{})
-		source = h["_source"].(map[string]interface{})
-		hashes = append(hashes, source["msgid"].(string))
+	for _, hit := range esr.Hits.Hits {
+		hashes = append(hashes, hit.Source.MsgID)
 	}
 
 	return hashes
