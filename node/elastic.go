@@ -2,28 +2,21 @@ package node
 
 import (
 	"bytes"
-	// "encoding/json"
-	"gitea.difrex.ru/Umbrella/fetcher/i2es"
-	"github.com/Jeffail/gabs"
+	"encoding/json"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"fmt"
+
+	"github.com/Jeffail/gabs"
+	log "github.com/Sirupsen/logrus"
 )
 
 const (
 	echoAgg = "echo_uniq"
 )
-
-// ESConf ...
-type ESConf i2es.ESConf
-
-// Bucket ...
-type Bucket struct {
-	Key      string `json:"key"`
-	DocCount int    `json:"doc_count"`
-}
 
 // MakePlainTextMessage ...
 func MakePlainTextMessage(hit interface{}) string {
@@ -49,6 +42,9 @@ func (es ESConf) GetPlainTextMessage(msgid string) []byte {
 	req, err := http.NewRequest("POST", searchURI, bytes.NewBuffer(searchQ))
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	if err != nil {
+		log.Error(err.Error())
+	}
 
 	defer resp.Body.Close()
 
@@ -80,6 +76,9 @@ func (es ESConf) GetEchoMessageHashes(echo string) []string {
 	req, err := http.NewRequest("POST", searchURI, bytes.NewBuffer(searchQ))
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	if err != nil {
+		log.Error(err.Error())
+	}
 
 	defer resp.Body.Close()
 
@@ -128,6 +127,9 @@ func (es ESConf) GetLimitedEchoMessageHashes(echo string, offset int, limit int)
 	req, err := http.NewRequest("POST", searchURI, bytes.NewBuffer(searchQ))
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	if err != nil {
+		log.Error(err.Error())
+	}
 
 	defer resp.Body.Close()
 
@@ -223,39 +225,50 @@ func (es ESConf) GetUEchoMessageHashes(echoes string) []string {
 
 // GetListTXT ...
 func (es ESConf) GetListTXT() []byte {
-	searchURI := strings.Join([]string{es.Host, es.Index, es.Type, "_search"}, "/")
-	searchQ := []byte(`{"aggs": {"echo_uniq": { "terms": { "field": "echo","size": 1000}}}}`)
+	var searchURI string
+	if es.Index != "" && es.Type != "" {
+		searchURI = strings.Join([]string{es.Host, es.Index, es.Type, "_search"}, "/")
+	} else {
+		searchURI = strings.Join([]string{es.Host, "search"}, "/")
+	}
+	searchQ := []byte(`{                                                   
+ "size": 0,
+ "aggs": {
+   "uniqueEcho": {
+     "cardinality": {
+       "field": "echo"
+     }
+   },
+   "echo": {
+     "terms": {
+       "field": "echo",
+       "size": 1000
+     }
+   }
+ }
+}`)
 	log.Print("Search URI: ", searchURI)
 
 	req, err := http.NewRequest("POST", searchURI, bytes.NewBuffer(searchQ))
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	if err != nil {
+		log.Error(err.Error())
+	}
 
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	var esr EchoAggregations
+	err = json.NewDecoder(resp.Body).Decode(&esr)
 	if err != nil {
-		return []byte("")
+		log.Error(err.Error())
 	}
-
-	esresp, err := gabs.ParseJSON(body)
-	if err != nil {
-		panic(err)
-	}
-
-	var uniq map[string]interface{}
-	uniq, _ = esresp.Path(strings.Join([]string{"aggregations", echoAgg}, ".")).Data().(map[string]interface{})
+	log.Infof("%+v", esr)
 
 	var echoes []string
-	for _, bucket := range uniq["buckets"].([]interface{}) {
-		b := make(map[string]interface{})
-		b = bucket.(map[string]interface{})
-		count := int(b["doc_count"].(float64))
-		c := strconv.Itoa(count)
-		echostr := strings.Join([]string{b["key"].(string), ":", c, ":"}, "")
-		echoes = append(echoes, echostr)
+	for _, bucket := range esr.EchoAgg["echo"].Buckets {
+		echoes = append(echoes, fmt.Sprintf("%s:%d:", bucket.Key, bucket.DocCount))
 	}
-
 	log.Print("Getting ", len(echoes), " echoes")
 
 	return []byte(strings.Join(echoes, "\n"))
