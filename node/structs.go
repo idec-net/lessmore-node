@@ -2,6 +2,12 @@ package node
 
 import "gitea.difrex.ru/Umbrella/fetcher/i2es"
 
+// PointRequest with message
+type PointRequest struct {
+	Pauth string `json:"pauth"`
+	Tmsg  string `json:"tmsg"`
+}
+
 // ESConf ...
 type ESConf i2es.ESConf
 

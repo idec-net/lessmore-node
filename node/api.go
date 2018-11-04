@@ -1,11 +1,14 @@
 package node
 
 import (
-	"log"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	"encoding/json"
+
+	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 )
 
@@ -28,7 +31,7 @@ func (es ESConf) ListTXTHandler(w http.ResponseWriter, r *http.Request) {
 
 // XFeaturesHandler list supported features
 func XFeaturesHandler(w http.ResponseWriter, r *http.Request) {
-	features := []string{"list.txt", "u/e", "u/m"}
+	features := []string{"list.txt", "u/e", "u/m", "x/c"}
 
 	LogRequest(r)
 
@@ -135,6 +138,34 @@ func (es ESConf) XCHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(strings.Join(counts, "\n")))
 }
 
+// UPointHandler /u/point scheme
+func (es ESConf) UPointHandler(w http.ResponseWriter, r *http.Request) {
+	var req PointRequest
+	LogRequest(r)
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte(fmt.Sprintf("error: %s", err.Error())))
+		return
+	}
+
+	// Authorization check
+	if !es.checkAuth(req) {
+		w.WriteHeader(403)
+		w.Write([]byte("Permission denied"))
+		return
+	}
+
+	// Proccess point message
+	err = es.PointMessage(req)
+	if err != nil {
+		log.Error(err.Error())
+		w.WriteHeader(500)
+		return
+	}
+}
+
 // Serve ...
 func Serve(listen string, es ESConf) {
 	r := mux.NewRouter()
@@ -149,6 +180,9 @@ func Serve(listen string, es ESConf) {
 	r.HandleFunc("/u/e/{echoes:[a-z0-9-_/.:]+}", es.UEHandler).Methods("GET")
 	r.HandleFunc("/u/m/{ids:[a-zA-Z0-9-_/.:]+}", es.UMHandler).Methods("GET")
 	r.HandleFunc("/x/c/{echoes:[a-zA-Z0-9-_/.:]+}", es.XCHandler).Methods("GET")
+
+	// Point methods
+	r.HandleFunc("/u/point", es.UPointHandler).Methods("POST")
 
 	http.Handle("/", r)
 
