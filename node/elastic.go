@@ -10,6 +10,8 @@ import (
 
 	"fmt"
 
+	"encoding/base64"
+
 	"gitea.difrex.ru/Umbrella/fetcher/i2es"
 	log "github.com/Sirupsen/logrus"
 )
@@ -162,6 +164,54 @@ func (es ESConf) GetLimitedEchoMessageHashes(echo string, offset int, limit int)
 	return hashes
 }
 
+func (es ESConf) GetUMMessages(msgs string) []string {
+	var encodedMessages []string
+
+	// First get messages list
+	messages := strings.Split(msgs, "/")
+	var searchURI string
+	if es.Index != "" && es.Type != "" {
+		searchURI = strings.Join([]string{es.Host, es.Index, es.Type, "_search"}, "/")
+	} else {
+		searchURI = strings.Join([]string{es.Host, "search"}, "/")
+	}
+	query := []byte(`
+{
+  "query": {
+    "query_string" : {
+      "fields": ["msgid"],
+      "query":"` + strings.Join(messages, " OR ") + `"
+    }
+  },
+  "sort": [{"date":{ "order": "desc" }},
+           { "_score":{ "order": "desc" }}
+  ]
+}`)
+	req, err := http.NewRequest("POST", searchURI, bytes.NewBuffer(query))
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Error(err.Error())
+		return encodedMessages
+	}
+
+	defer resp.Body.Close()
+
+	var esr ESSearchResp
+	err = json.NewDecoder(resp.Body).Decode(&esr)
+	if err != nil {
+		log.Error(err.Error())
+		return encodedMessages
+	}
+
+	for _, hit := range esr.Hits.Hits {
+		m := fmt.Sprintf("%s:%s", hit.Source.MsgID, base64.StdEncoding.EncodeToString(MakePlainTextMessage(hit.Source)))
+		encodedMessages = append(encodedMessages, m)
+	}
+
+	return encodedMessages
+}
+
 // GetUEchoMessageHashes ...
 func (es ESConf) GetUEchoMessageHashes(echoes string) []string {
 	var echohashes []string
@@ -228,6 +278,64 @@ func (es ESConf) GetUEchoMessageHashes(echoes string) []string {
 	}
 
 	return echohashes
+}
+
+// GetXC implements /x/c
+func (es ESConf) GetXC(echoes string) []string {
+	var searchURI string
+	var counts []string
+	if es.Index != "" && es.Type != "" {
+		searchURI = strings.Join([]string{es.Host, es.Index, es.Type, "_search"}, "/")
+	} else {
+		searchURI = strings.Join([]string{es.Host, "search"}, "/")
+	}
+
+	query := []byte(`
+{
+    "query": {
+        "query_string" : {
+            "fields": ["echo"],
+            "query": "` + strings.Join(strings.Split(echoes, "/"), " OR ") + `"
+        }
+    },
+    "size": 0,
+    "aggs": {
+        "uniqueEcho": {
+            "cardinality": {
+                "field": "echo"
+            }
+        },
+        "echo": {
+            "terms": {
+                "field": "echo",
+                "size": 1000
+            }
+        }
+    }
+}
+`)
+	req, err := http.NewRequest("POST", searchURI, bytes.NewBuffer(query))
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Error(err.Error())
+		return counts
+	}
+
+	defer resp.Body.Close()
+
+	var esr EchoAggregations
+	err = json.NewDecoder(resp.Body).Decode(&esr)
+	if err != nil {
+		log.Error(err.Error())
+		return counts
+	}
+	log.Infof("%+v", esr)
+
+	for _, hit := range esr.EchoAgg["echo"].Buckets {
+		counts = append(counts, fmt.Sprintf("%s:%d", hit.Key, hit.DocCount))
+	}
+	return counts
 }
 
 // GetListTXT ...

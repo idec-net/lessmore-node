@@ -1,11 +1,12 @@
 package node
 
 import (
-	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 // ListTXTHandler ...
@@ -27,7 +28,7 @@ func (es ESConf) ListTXTHandler(w http.ResponseWriter, r *http.Request) {
 
 // XFeaturesHandler list supported features
 func XFeaturesHandler(w http.ResponseWriter, r *http.Request) {
-	features := []string{"list.txt", "u/e"}
+	features := []string{"list.txt", "u/e", "u/m"}
 
 	LogRequest(r)
 
@@ -75,6 +76,27 @@ func (es ESConf) UEHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(strings.Join(messages, "\n")))
 }
 
+// UMHandler /u/m/ schema
+func (es ESConf) UMHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	e := vars["ids"]
+
+	log.Print("/u/e/ vars: ", e)
+
+	LogRequest(r)
+
+	ch := make(chan []string)
+	// Get echolist
+	go func() {
+		ch <- es.GetUMMessages(e)
+	}()
+
+	messages := <-ch
+
+	w.WriteHeader(200)
+	w.Write([]byte(strings.Join(messages, "\n")))
+}
+
 // MHandler /m/ schema
 func (es ESConf) MHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -94,18 +116,39 @@ func (es ESConf) MHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(message)
 }
 
+// XCHandler /x/c schema
+func (es ESConf) XCHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	echoes := vars["echoes"]
+
+	LogRequest(r)
+
+	ch := make(chan []string)
+	// Get echolist
+	go func() {
+		ch <- es.GetXC(echoes)
+	}()
+
+	counts := <-ch
+
+	w.WriteHeader(200)
+	w.Write([]byte(strings.Join(counts, "\n")))
+}
+
 // Serve ...
 func Serve(listen string, es ESConf) {
 	r := mux.NewRouter()
-	r.HandleFunc("/list.txt", es.ListTXTHandler)
-	r.HandleFunc("/x/features", XFeaturesHandler)
+	r.HandleFunc("/list.txt", es.ListTXTHandler).Methods("GET")
+	r.HandleFunc("/x/features", XFeaturesHandler).Methods("GET")
 
 	// Standart schemas
-	r.HandleFunc("/e/{echo}", es.EHandler)
-	r.HandleFunc("/m/{msgid}", es.MHandler)
+	r.HandleFunc("/e/{echo}", es.EHandler).Methods("GET")
+	r.HandleFunc("/m/{msgid}", es.MHandler).Methods("GET")
 
 	// Extensions
-	r.HandleFunc("/u/e/{echoes:[a-z0-9-_/.:]+}", es.UEHandler)
+	r.HandleFunc("/u/e/{echoes:[a-z0-9-_/.:]+}", es.UEHandler).Methods("GET")
+	r.HandleFunc("/u/m/{ids:[a-zA-Z0-9-_/.:]+}", es.UMHandler).Methods("GET")
+	r.HandleFunc("/x/c/{echoes:[a-zA-Z0-9-_/.:]+}", es.XCHandler).Methods("GET")
 
 	http.Handle("/", r)
 
