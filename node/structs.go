@@ -33,16 +33,37 @@ type Hits struct {
 
 // {"_index":"idec5","_type":"post","_id":"aAjSbXS5XeNF6lVaPh5A","_score":1.0,"_source"
 type Hit struct {
-	Index  string     `json:"index"`
+	Index  string     `json:"_index"`
 	Type   string     `json:"_type"`
 	ID     string     `json:"_id"`
 	Source i2es.ESDoc `json:"_source"`
+}
+
+type UserHits struct {
+	Total    int64     `json:"total"`
+	MaxScore float64   `json:"max_score"`
+	Hits     []UserHit `json:"hits"`
+}
+
+// { "_index":".lessmore_users","_type":"user","_id":"1","_score":1.0,
+//   "_source":{"id": 1, "address": "dynamic", "name": "name", "authString": "thisIsAtest"}}
+type UserHit struct {
+	Index  string  `json:"_index"`
+	Type   string  `json:"_type"`
+	ID     string  `json:"_id"`
+	Score  float64 `json:"_score"`
+	Source User    `json:"_source"`
 }
 
 // "aggregations":{"echo":{"doc_count_error_upper_bound":2406,"sum_other_doc_count":76555,"buckets":[{"key":"bash.rss","doc_count":12779}]},"uniqueEcho":{"value":121}}}
 type EchoAggregations struct {
 	EchoAgg  map[string]EchoAgg `json:"aggregations"`
 	UniqEcho map[string]Uniq    `json:"uniqueEcho"`
+}
+
+type MaxIdAggregation struct {
+	Hits  UserHits        `json:"hits"`
+	MaxID map[string]Uniq `json:"aggregations"`
 }
 
 type EchoAgg struct {
@@ -57,7 +78,7 @@ type EchoBucket struct {
 }
 
 type Uniq struct {
-	Value int64 `json:"value"`
+	Value float64 `json:"value"`
 }
 
 type ESSearchShards struct {

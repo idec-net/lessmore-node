@@ -53,10 +53,18 @@ func (es ESConf) GetPlainTextMessage(msgid string) []byte {
 		`{"query": {"match": {"_id": "`, msgid, `"}}}`}, ""))
 
 	req, err := http.NewRequest("POST", searchURI, bytes.NewBuffer(searchQ))
+	if err != nil {
+		log.Error(err.Error())
+		return []byte("")
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Error(err.Error())
+		return []byte("")
 	}
 
 	defer resp.Body.Close()
@@ -87,9 +95,15 @@ func (es ESConf) GetEchoMessageHashes(echo string) []string {
 	searchQ := []byte(strings.Join([]string{
 		`{"sort": [
             {"date":{ "order": "desc" }},{ "_score":{ "order": "desc" }}],
-          "query": {"query_string" : {"fields": ["msgid", "echo"], "query":"`, echo, `"}}, "size": 500}`}, ""))
+          "query": {"query_string" : {"fields": ["echo"], "query":"`, echo, `"}}, "size": 500}`}, ""))
 
 	req, err := http.NewRequest("POST", searchURI, bytes.NewBuffer(searchQ))
+	if err != nil {
+		log.Error(err.Error())
+		return hashes
+	}
+	req.Header.Add("Content-Type", "application/json")
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -98,6 +112,9 @@ func (es ESConf) GetEchoMessageHashes(echo string) []string {
 	}
 
 	defer resp.Body.Close()
+
+	content, _ := ioutil.ReadAll(resp.Body)
+	log.Info(string(content))
 
 	var esr ESSearchResp
 	err = json.NewDecoder(resp.Body).Decode(&esr)
@@ -142,6 +159,12 @@ func (es ESConf) GetLimitedEchoMessageHashes(echo string, offset int, limit int)
           "query": {"query_string" : {"fields": ["msgid", "echo"], "query":"`, echo, `"}}, "size":`, l, `}`}, ""))
 
 	req, err := http.NewRequest("POST", searchURI, bytes.NewBuffer(searchQ))
+	if err != nil {
+		log.Error(err.Error())
+		return hashes
+	}
+	req.Header.Add("Content-Type", "application/json")
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -188,6 +211,12 @@ func (es ESConf) GetUMMessages(msgs string) []string {
   ]
 }`)
 	req, err := http.NewRequest("POST", searchURI, bytes.NewBuffer(query))
+	if err != nil {
+		log.Error(err.Error())
+		return encodedMessages
+	}
+	req.Header.Add("Content-Type", "application/json")
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -315,6 +344,12 @@ func (es ESConf) GetXC(echoes string) []string {
 }
 `)
 	req, err := http.NewRequest("POST", searchURI, bytes.NewBuffer(query))
+	if err != nil {
+		log.Error(err.Error())
+		return counts
+	}
+	req.Header.Add("Content-Type", "application/json")
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -342,7 +377,7 @@ func (es ESConf) GetXC(echoes string) []string {
 func (es ESConf) GetListTXT() []byte {
 	var searchURI string
 	if es.Index != "" && es.Type != "" {
-		searchURI = strings.Join([]string{es.Host, es.Index, es.Type, "_search"}, "/")
+		searchURI = strings.Join([]string{es.Host, es.Index, "_search"}, "/")
 	} else {
 		searchURI = strings.Join([]string{es.Host, "search"}, "/")
 	}
@@ -365,10 +400,17 @@ func (es ESConf) GetListTXT() []byte {
 	log.Print("Search URI: ", searchURI)
 
 	req, err := http.NewRequest("POST", searchURI, bytes.NewBuffer(searchQ))
+	if err != nil {
+		log.Error(err.Error())
+		return []byte("")
+	}
+	req.Header.Add("Content-Type", "application/json")
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Error(err.Error())
+		return []byte("")
 	}
 
 	defer resp.Body.Close()
@@ -377,6 +419,7 @@ func (es ESConf) GetListTXT() []byte {
 	err = json.NewDecoder(resp.Body).Decode(&esr)
 	if err != nil {
 		log.Error(err.Error())
+		return []byte("")
 	}
 	log.Infof("%+v", esr)
 

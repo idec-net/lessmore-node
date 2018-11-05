@@ -151,19 +151,23 @@ func (es ESConf) UPointHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Authorization check
-	if !es.checkAuth(req) {
+	user, ok := es.checkAuth(req)
+	if !ok {
 		w.WriteHeader(403)
 		w.Write([]byte("Permission denied"))
 		return
 	}
 
 	// Proccess point message
-	err = es.PointMessage(req)
+	err = es.PointMessage(req, user)
 	if err != nil {
 		log.Error(err.Error())
 		w.WriteHeader(500)
 		return
 	}
+
+	w.WriteHeader(200)
+	w.Write([]byte("ok: added"))
 }
 
 // Serve ...
