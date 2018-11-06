@@ -143,7 +143,13 @@ func (es ESConf) UPointHandler(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r)
 
 	// Log request
-	content, _ := ioutil.ReadAll(r.Body)
+	content, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Error("Fail to parse POST body: ", err.Error())
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("error: %s", err.Error())))
+		return
+	}
 	log.Debugf("Point request is: ", string(content))
 
 	// Get plain POST variables
@@ -152,6 +158,10 @@ func (es ESConf) UPointHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	pauth := r.Form.Get("pauth")
 	tmsg := r.Form.Get("tmsg")
+	if pauth == "" && tmsg == "" {
+		log.Debug("Trying parse body request")
+		pauth, tmsg = parsePointBody(string(content))
+	}
 
 	req.Pauth = pauth
 	req.Tmsg = tmsg

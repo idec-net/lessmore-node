@@ -1,11 +1,13 @@
 package node
 
 import (
-	"log"
 	"time"
 
 	mrand "math/rand"
 
+	"strings"
+
+	log "github.com/Sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -27,4 +29,26 @@ func genAuthString() []byte {
 	}
 
 	return authString
+}
+
+// parsePointBody without regexp
+// it dirty hack mades because *http.Request.Form not parsed it
+func parsePointBody(content string) (string, string) {
+	var pauth, tmsg string
+	log.Debug("Body parser: ", content)
+	if strings.Contains(content, "&") {
+		log.Debug("Found &")
+		for _, v := range strings.Split(content, "&") {
+			if strings.Contains(v, "pauth") {
+				log.Debug("Found pauth")
+				pauth = strings.Split(v, "pauth=")[1]
+			}
+			if strings.Contains(v, "tmsg") {
+				log.Debug("Found tmsg")
+				tmsg = strings.Split(v, "tmsg=")[1]
+			}
+		}
+	}
+
+	return pauth, tmsg
 }
