@@ -15,6 +15,7 @@ var (
 	esMessagesType  string
 	add             string
 	email           string
+	debug           bool
 )
 
 // init ...
@@ -25,9 +26,12 @@ func init() {
 	flag.StringVar(&esMessagesType, "estype", "post", "ES index type")
 	flag.StringVar(&add, "add", "", "User to add")
 	flag.StringVar(&email, "email", "", "User email address")
+	flag.BoolVar(&debug, "debug", false, "Debug output")
 	flag.Parse()
 
-	log.SetLevel(log.DebugLevel)
+	if debug {
+		log.SetLevel(log.DebugLevel)
+	}
 }
 
 // main ...
