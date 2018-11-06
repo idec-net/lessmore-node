@@ -28,6 +28,21 @@ func (es ESConf) ListTXTHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(echoes)
 }
 
+func (ed ESConf) BlacklistTXT(w http.ResponseWriter, r *http.Request) {
+	LogRequest(r)
+	w.WriteHeader(200)
+	w.Write([]byte(`KNMUXRTMJA6XWHMB22CD
+6AKO6DEWYF7EHXWMI2BY
+qcYj9ceDYjoxt2z6qhzN
+k1zaEUu1Tg0g97osDeS7
+j8s7ZMdTzmHzsRJna3xb
+vuMNfQWe8xonMFPZtOxP
+bcp6izdkdCj9AXUOP2aT
+0dIDXSJTLtR8N2KnLTl1
+2QzNqUiyuoPcPn0l74KP
+`))
+}
+
 // XFeaturesHandler list supported features
 func XFeaturesHandler(w http.ResponseWriter, r *http.Request) {
 	features := []string{"list.txt", "u/e", "u/m", "x/c"}
@@ -200,6 +215,7 @@ func (es ESConf) UPointHandler(w http.ResponseWriter, r *http.Request) {
 func Serve(listen string, es ESConf) {
 	r := mux.NewRouter()
 	r.HandleFunc("/list.txt", es.ListTXTHandler).Methods("GET")
+	r.HandleFunc("/blacklist.txt", es.BlacklistTXT).Methods("GET")
 	r.HandleFunc("/x/features", XFeaturesHandler).Methods("GET")
 
 	// Standart schemas

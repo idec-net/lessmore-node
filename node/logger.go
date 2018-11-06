@@ -1,13 +1,14 @@
 package node
 
 import (
-	"log"
+	"fmt"
 	"net/http"
-	"strings"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 // LogRequest ...
 func LogRequest(r *http.Request) {
-	logString := strings.Join([]string{r.Method, string(r.ContentLength), r.RequestURI, r.RemoteAddr}, " ")
-	log.Print("[API] ", logString)
+	logString := fmt.Sprintf("%s %d %s %s", r.Method, r.ContentLength, r.RequestURI, r.RemoteAddr)
+	log.Print("[API] " + logString)
 }
