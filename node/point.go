@@ -31,6 +31,9 @@ func (es ESConf) PointMessage(req PointRequest, user User) error {
 	if err != nil {
 		return err
 	}
+	if err := pmsg.Validate(); err != nil {
+		return err
+	}
 
 	bmsg, err := idec.MakeBundledMessage(pmsg)
 	if err != nil {

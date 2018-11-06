@@ -83,7 +83,7 @@ func (es ESConf) UMHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	e := vars["ids"]
 
-	log.Print("/u/e/ vars: ", e)
+	log.Print("/u/m/ vars: ", e)
 
 	LogRequest(r)
 
@@ -155,6 +155,9 @@ func (es ESConf) UPointHandler(w http.ResponseWriter, r *http.Request) {
 	// Get plain POST variables
 	if err := r.ParseForm(); err != nil {
 		log.Error("Fail to parse POST args: ", err.Error())
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("error: %s", err.Error())))
+		return
 	}
 	pauth := r.Form.Get("pauth")
 	tmsg := r.Form.Get("tmsg")
@@ -183,7 +186,7 @@ func (es ESConf) UPointHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Proccess point message
 	if err := es.PointMessage(req, user); err != nil {
-		log.Error(err.Error())
+		log.Error("Fail to parse point message: ", err.Error())
 		w.WriteHeader(500)
 		w.Write([]byte(fmt.Sprintf("error: %s", err.Error())))
 		return
