@@ -234,7 +234,9 @@ func (es ESConf) GetUMMessages(msgs string) []string {
 	}
 
 	for _, hit := range esr.Hits.Hits {
-		m := fmt.Sprintf("%s:%s", hit.Source.MsgID, base64.StdEncoding.EncodeToString(MakePlainTextMessage(hit.Source)))
+		m := fmt.Sprintf("%s:%s",
+			hit.Source.MsgID,
+			base64.StdEncoding.EncodeToString(MakePlainTextMessage(hit.Source)))
 		encodedMessages = append(encodedMessages, m)
 	}
 

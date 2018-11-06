@@ -52,3 +52,12 @@ func parsePointBody(content string) (string, string) {
 
 	return pauth, tmsg
 }
+
+// b64replace +,/,-,_ with A and Z
+func b64replace(s string) string {
+	s = strings.Replace(s, "+", "A", -1)
+	s = strings.Replace(s, "-", "A", -1)
+	s = strings.Replace(s, "/", "Z", -1)
+	s = strings.Replace(s, "_", "Z", -1)
+	return s
+}

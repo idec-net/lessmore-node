@@ -173,14 +173,14 @@ func (es ESConf) UPointHandler(w http.ResponseWriter, r *http.Request) {
 
 	if pauth == "" {
 		w.WriteHeader(403)
-		w.Write([]byte("error: authstring cannot be empty"))
+		w.Write([]byte("auth error"))
 		return
 	}
 	// Authorization check
 	user, ok := es.checkAuth(req)
 	if !ok {
 		w.WriteHeader(403)
-		w.Write([]byte("error: permission denied"))
+		w.Write([]byte("auth error"))
 		return
 	}
 
@@ -193,7 +193,7 @@ func (es ESConf) UPointHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(200)
-	w.Write([]byte("ok: added"))
+	w.Write([]byte("msg ok"))
 }
 
 // Serve ...
