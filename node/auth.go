@@ -54,7 +54,7 @@ func (es ESConf) checkAuth(r PointRequest) (User, bool) {
 
 	req, err := http.NewRequest("POST", reqURL, strings.NewReader(query))
 	if err != nil {
-		log.Error(err)
+		log.Error("Can't prepare a request: ", err)
 		return User{}, false
 	}
 	req.Header.Add("Content-Type", "application/json")
@@ -62,7 +62,7 @@ func (es ESConf) checkAuth(r PointRequest) (User, bool) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Error(err)
+		log.Error("Can't make a request: ", err)
 		return User{}, false
 	}
 	defer resp.Body.Close()
@@ -70,7 +70,7 @@ func (es ESConf) checkAuth(r PointRequest) (User, bool) {
 	var esr MaxIdAggregation
 	err = json.NewDecoder(resp.Body).Decode(&esr)
 	if err != nil {
-		log.Error(err)
+		log.Error("Can't decode a response from ES: ", err)
 		return User{}, false
 	}
 

@@ -26,6 +26,8 @@ func init() {
 	flag.StringVar(&add, "add", "", "User to add")
 	flag.StringVar(&email, "email", "", "User email address")
 	flag.Parse()
+
+	log.SetLevel(log.DebugLevel)
 }
 
 // main ...

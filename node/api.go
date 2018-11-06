@@ -2,11 +2,10 @@ package node
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
-
-	"encoding/json"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
@@ -143,26 +142,40 @@ func (es ESConf) UPointHandler(w http.ResponseWriter, r *http.Request) {
 	var req PointRequest
 	LogRequest(r)
 
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte(fmt.Sprintf("error: %s", err.Error())))
+	// Log request
+	content, _ := ioutil.ReadAll(r.Body)
+	log.Debugf("Point request is: ", string(content))
+
+	// Get plain POST variables
+	if err := r.ParseForm(); err != nil {
+		log.Error("Fail to parse POST args: ", err.Error())
+	}
+	pauth := r.Form.Get("pauth")
+	tmsg := r.Form.Get("tmsg")
+
+	req.Pauth = pauth
+	req.Tmsg = tmsg
+
+	log.Debugf("pauth: %s\ntmsg: %s", pauth, tmsg)
+
+	if pauth == "" {
+		w.WriteHeader(403)
+		w.Write([]byte("error: authstring cannot be empty"))
 		return
 	}
-
 	// Authorization check
 	user, ok := es.checkAuth(req)
 	if !ok {
 		w.WriteHeader(403)
-		w.Write([]byte("Permission denied"))
+		w.Write([]byte("error: permission denied"))
 		return
 	}
 
 	// Proccess point message
-	err = es.PointMessage(req, user)
-	if err != nil {
+	if err := es.PointMessage(req, user); err != nil {
 		log.Error(err.Error())
 		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("error: %s", err.Error())))
 		return
 	}
 
