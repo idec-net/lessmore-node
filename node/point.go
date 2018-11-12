@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"bytes"
 
-	log "github.com/Sirupsen/logrus"
 	idec "github.com/idec-net/go-idec"
+	log "github.com/sirupsen/logrus"
 )
 
 type ESDoc struct {
@@ -23,6 +24,7 @@ type ESDoc struct {
 	Tags    string `json:"tags"`
 	Repto   string `json:"repto"`
 	Address string `json:"address"`
+	TopicID string `json:"topicid"`
 }
 
 // PointMessage add point message into DB
@@ -41,8 +43,7 @@ func (es ESConf) PointMessage(req PointRequest, user User) error {
 	}
 
 	// Make bundle ID
-	// Prevent collission via adding Timestamp
-	id := idec.MakeMsgID(fmt.Sprintf("%s\n%d", pmsg.String(), bmsg.Timestamp))
+	id := idec.MakeMsgID(pmsg.String())
 	bmsg.ID = id
 	bmsg.From = user.Name
 	bmsg.Address = fmt.Sprintf("%s,%d", user.Address, user.UserID)
@@ -51,6 +52,42 @@ func (es ESConf) PointMessage(req PointRequest, user User) error {
 		return err
 	}
 	return nil
+}
+
+func (es ESConf) getTopicID(msgid string) string {
+	var topicid string
+	if msgid == "" {
+		return topicid
+	}
+	reqURL := fmt.Sprintf("%s/%s/%s/%s", es.Host, es.Index, es.Type, msgid)
+	req, err := http.NewRequest("GET", reqURL, strings.NewReader(""))
+	if err != nil {
+		log.Error(err)
+		return topicid
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Error(err)
+		return topicid
+	}
+
+	defer resp.Body.Close()
+
+	var hit Hit
+	err = json.NewDecoder(resp.Body).Decode(&hit)
+	if err != nil {
+		log.Error(err)
+		return topicid
+	}
+
+	if hit.Source.TopicID != "" {
+		topicid = hit.Source.TopicID
+	} else if hit.Source.Repto != "" {
+		return es.getTopicID(hit.Source.Repto)
+	}
+
+	return topicid
 }
 
 func (es ESConf) IndexMessage(msg idec.Message) error {
@@ -66,6 +103,7 @@ func (es ESConf) IndexMessage(msg idec.Message) error {
 		Repto:   msg.Repto,
 		Address: msg.Address,
 		MsgID:   msg.ID,
+		TopicID: es.getTopicID(msg.Repto),
 	}
 	reqURL := fmt.Sprintf("%s/%s/%s/%s", es.Host, es.Index, es.Type, msg.ID)
 	bdoc, err := json.Marshal(doc)

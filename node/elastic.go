@@ -13,7 +13,7 @@ import (
 	"encoding/base64"
 
 	"gitea.difrex.ru/Umbrella/fetcher/i2es"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
